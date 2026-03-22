@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NOS Teletekst Radiobulletin</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oswald:wght@300;400;700&display=swap');
+:root{
+  --bg:#0a0a14;--panel:#0d0d22;--yellow:#f5c518;--cyan:#00e5ff;
+  --red:#ff2d2d;--white:#e8e8f0;--dim:#7070a0;--border:#2a2a55;
+  --scan:rgba(0,0,0,0.15);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;background:var(--bg);color:var(--white);font-family:'Share Tech Mono',monospace;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(to bottom,transparent 0px,transparent 3px,var(--scan) 3px,var(--scan) 4px);pointer-events:none;z-index:1000;opacity:0.35;}
+body::after{content:'';position:fixed;inset:0;background:radial-gradient(ellipse at center,transparent 60%,rgba(0,0,0,0.65) 100%);pointer-events:none;z-index:999;}
+.screen{max-width:720px;margin:0 auto;padding:16px;min-height:100vh;display:flex;flex-direction:column;}
+.hdr{background:var(--yellow);color:#000;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #000;}
+.hdr-l{font-family:'Oswald',sans-serif;font-weight:700;font-size:1.4rem;letter-spacing:2px;text-transform:uppercase;}
+.hdr-r{font-size:0.75rem;text-align:right;line-height:1.5;}
+.nav{background:#000080;color:var(--white);padding:6px 16px;display:flex;gap:20px;font-size:0.8rem;border-bottom:2px solid var(--cyan);}
+.nav b{color:var(--yellow);margin-right:3px;}.nav span{color:var(--cyan);}
+
+/* laadscherm */
+#loadScreen{background:var(--panel);border:1px solid var(--border);border-top:3px solid var(--cyan);padding:24px 20px;margin:12px 0;display:flex;flex-direction:column;gap:14px;}
+.load-title{font-family:'Oswald',sans-serif;font-size:1rem;color:var(--dim);text-transform:uppercase;letter-spacing:3px;}
+.load-bar-w{background:#111133;height:8px;}
+.load-bar{height:100%;background:linear-gradient(90deg,var(--cyan),var(--yellow));width:0%;transition:width 0.3s;box-shadow:0 0 8px var(--cyan);}
+.load-stat{font-size:0.78rem;color:var(--cyan);min-height:1.2rem;}
+.load-log{font-size:0.68rem;color:var(--dim);line-height:1.9;word-break:break-all;}
+
+/* speler */
+#playerScreen{display:none;flex-direction:column;}
+.card{background:var(--panel);border:1px solid var(--border);border-top:3px solid var(--cyan);padding:20px;margin:12px 0;}
+.lbl-sm{font-family:'Oswald',sans-serif;font-size:1rem;color:var(--dim);text-transform:uppercase;letter-spacing:3px;margin-bottom:4px;}
+.lbl-now{font-family:'Oswald',sans-serif;font-weight:700;font-size:1.3rem;color:var(--white);line-height:1.2;min-height:3rem;margin-bottom:14px;transition:color .3s;}
+.lbl-now.on{color:var(--cyan);}
+.prg-w{background:#111133;height:6px;overflow:hidden;margin-bottom:10px;}
+.prg-b{height:100%;background:linear-gradient(90deg,var(--cyan),var(--yellow));width:0%;transition:width .4s linear;box-shadow:0 0 8px var(--cyan);}
+.ctr{font-size:.75rem;color:var(--dim);margin-bottom:14px;}.ctr span{color:var(--yellow);}
+
+/* stemkeuze */
+.voice-row{background:#0a0a20;border:1px solid var(--border);padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.voice-row label{font-size:.72rem;color:var(--dim);white-space:nowrap;text-transform:uppercase;letter-spacing:1px;}
+.voice-row select{flex:1;min-width:160px;background:#111133;border:1px solid var(--border);color:var(--white);font-family:'Share Tech Mono',monospace;font-size:.78rem;padding:6px 8px;cursor:pointer;}
+
+.btns{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.btn{font-family:'Share Tech Mono',monospace;font-size:.85rem;padding:10px 20px;border:2px solid;cursor:pointer;text-transform:uppercase;letter-spacing:1px;transition:all .15s;background:transparent;}
+.btn-p{border-color:var(--cyan);color:var(--cyan);}.btn-p:hover,.btn-p.on{background:var(--cyan);color:#000;box-shadow:0 0 14px var(--cyan);}
+.btn-s{border-color:var(--red);color:var(--red);}.btn-s:hover{background:var(--red);color:#fff;}
+.btn-pau{border-color:var(--yellow);color:var(--yellow);}.btn-pau:hover{background:var(--yellow);color:#000;}
+.spd{display:flex;align-items:center;gap:8px;margin-left:auto;font-size:.75rem;color:var(--dim);}
+.spd select{background:#111133;border:1px solid var(--border);color:var(--white);font-family:'Share Tech Mono',monospace;font-size:.8rem;padding:6px 8px;cursor:pointer;}
+
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--dim);margin-right:6px;vertical-align:middle;}
+.dot.live{background:var(--red);animation:blink 1s step-end infinite;box-shadow:0 0 6px var(--red);}
+.dot.paus{background:var(--yellow);}
+@keyframes blink{50%{opacity:0;}}
+.stat{font-size:.75rem;color:var(--dim);margin-top:12px;min-height:1rem;}
+
+.list-hdr{background:#000080;color:var(--yellow);font-family:'Oswald',sans-serif;font-weight:700;font-size:.85rem;letter-spacing:2px;padding:8px 16px;border-top:2px solid var(--border);text-transform:uppercase;display:flex;justify-content:space-between;}
+.list-hdr span{color:var(--dim);font-family:'Share Tech Mono',monospace;font-weight:400;}
+.nlist{border:1px solid var(--border);border-top:none;}
+.ni{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;display:flex;gap:10px;align-items:flex-start;}
+.ni:hover{background:rgba(0,229,255,.05);}
+.ni.cur{background:rgba(0,229,255,.1);border-left:3px solid var(--cyan);animation:pulse 2s ease-in-out infinite;}
+.ni.done{opacity:.4;}
+.ni-num{font-size:.7rem;color:var(--cyan);min-width:22px;margin-top:2px;}
+.ni-pg{font-size:.65rem;color:var(--dim);min-width:38px;margin-top:2px;}
+.ni-cat{font-size:.65rem;color:var(--dim);min-width:64px;margin-top:2px;text-transform:uppercase;}
+.ni-title{font-family:'Oswald',sans-serif;font-weight:700;font-size:.9rem;color:var(--yellow);}
+.ni.cur .ni-title{color:var(--cyan);}
+.ni-body{flex:1;}
+.foot{margin-top:14px;padding:10px 0;font-size:.65rem;color:var(--dim);border-top:1px solid var(--border);display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px;}
+.btn-rel{font-family:'Share Tech Mono',monospace;font-size:.7rem;padding:5px 12px;border:1px solid var(--dim);color:var(--dim);background:transparent;cursor:pointer;text-transform:uppercase;transition:all .15s;}
+.btn-rel:hover{border-color:var(--cyan);color:var(--cyan);}
+@keyframes pulse{0%,100%{background:rgba(0,229,255,.10);}50%{background:rgba(0,229,255,.20);}}
+</style>
+</head>
+<body>
+<div class="screen">
+
+  <div class="hdr">
+    <div class="hdr-l">NOS&nbsp;&nbsp;Teletekst</div>
+    <div class="hdr-r" id="hdrDate">NIEUWS RADIOBULLETIN<br>laden...</div>
+  </div>
+  <div class="nav">
+    <div><b>104</b><span>binnenland</span></div>
+    <div><b>125</b><span>buitenland</span></div>
+    <div><b>600</b><span>sport</span></div>
+    <div><b>700</b><span>weer</span></div>
+  </div>
+
+  <div id="loadScreen">
+    <div class="load-title">Teletekst ophalen</div>
+    <div class="load-bar-w"><div class="load-bar" id="loadBar"></div></div>
+    <div class="load-stat" id="loadStat">Verbinden met NOS Teletekst...</div>
+    <div class="load-log" id="loadLog"></div>
+  </div>
+
+  <div id="playerScreen">
+    <div class="card">
+      <div class="lbl-sm">Nu spelend</div>
+      <div class="lbl-now" id="lblNow">Druk op SPELEN om het bulletin te starten</div>
+      <div class="prg-w"><div class="prg-b" id="prgB"></div></div>
+      <div class="ctr">Bericht <span id="curN">—</span> van <span id="totN">—</span></div>
+
+      <div class="voice-row">
+        <label>Stem:</label>
+        <select id="voiceSel" onchange="onVoiceChange()">
+          <option>— stemmen laden —</option>
+        </select>
+      </div>
+
+      <div class="btns">
+        <button class="btn btn-p" id="btnPlay" onclick="startBulletin()">&#9654; Spelen</button>
+        <button class="btn btn-pau" id="btnPau" onclick="pauseBulletin()">&#9646;&#9646; Pauze</button>
+        <button class="btn btn-s" onclick="stopBulletin()">&#9632; Stop</button>
+        <div class="spd">Snelheid&nbsp;
+          <select id="spdSel" onchange="speed=parseFloat(this.value)">
+            <option value="0.8">Langzaam</option>
+            <option value="1.0" selected>Normaal</option>
+            <option value="1.2">Snel</option>
+            <option value="1.5">Zeer snel</option>
+          </select>
+        </div>
+      </div>
+      <div class="stat"><span class="dot" id="dot"></span><span id="statTxt">Gereed</span></div>
+    </div>
+
+    <div class="list-hdr">Nieuwsoverzicht <span id="listDate"></span></div>
+    <div class="nlist" id="nlist"></div>
+    <div class="foot">
+      <span id="footInfo">NOS Teletekst p.100–130</span>
+      <button class="btn-rel" onclick="location.reload()">&#8635; Vernieuwen</button>
+    </div>
+  </div>
+
+</div>
+<script>
+// ── staat ──
+let items=[], cur=-1, paused=false, stopped=true, utt=null, speed=1.0, voice=null;
+
+// ── datum helpers ──
+function dutchShort(){
+  const d=new Date(),da=['zo','ma','di','wo','do','vr','za'],ma=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  return `${da[d.getDay()]} ${d.getDate()} ${ma[d.getMonth()]} ${d.getFullYear()}`;
+}
+function dutchLong(){
+  const d=new Date(),da=['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'],
+  ma=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+  return `${da[d.getDay()]} ${d.getDate()} ${ma[d.getMonth()]} ${d.getFullYear()}`;
+}
+function dutchSpoken(){
+  const d=new Date(),da=['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'],
+  ma=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'],
+  jr={2025:'tweeduizend vijfentwintig',2026:'tweeduizend zesentwintig',2027:'tweeduizend zevenentwintig'};
+  return `${da[d.getDay()]} ${d.getDate()} ${ma[d.getMonth()]} ${jr[d.getFullYear()]||d.getFullYear()}`;
+}
+function dagdeel(){const h=new Date().getHours();return h<6?'nacht':h<12?'ochtend':h<18?'middag':'avond';}
+
+// ── teletekst ophalen ──
+const PAGES=[104,105,106,107,108,109,125,126,127,128,129,130];
+// Extra pagina's die NOS soms gebruikt — proberen we ook
+const EXTRA=[110,111,112,113,114,115,116,117,118,119,120,121,122,123,124];
+const ALLPAGES=[...PAGES,...EXTRA];
+
+async function fetchPagina(n){
+  try{
+    const r=await fetch(`https://teletekst-data.nos.nl/webplus?p=${n}-1`,{signal:AbortSignal.timeout(6000)});
+    if(!r.ok)return null;
+    const html=await r.text();
+    return parsePagina(html,n);
+  }catch{return null;}
+}
+
+function parsePagina(html,n){
+  const pre=html.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+  if(!pre)return null;
+  let raw=pre[1].replace(/<[^>]+>/g,'').replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&nbsp;/g,' ').replace(/&quot;/g,'"');
+  const lines=raw.split('\n');
+  let titel='',body=[],hdr=false,titGevonden=false;
+  for(let i=0;i<lines.length;i++){
+    const t=lines[i].trim();
+    if(!hdr){if(/NOS Teletekst\s+\d+/i.test(t))hdr=true;continue;}
+    if(!titGevonden){if(t.length>3){titel=t.replace(/\s+/g,' ').trim();titGevonden=true;}continue;}
+    body.push(lines[i]);
+  }
+  if(!titel||titel.length<5)return null;
+  // Sla index/navigatiepagina's over
+  if(/^\s*N\s*O\s*S\s/.test(titel))return null;
+  if(body.join('').match(/\d{3}\s{2,}\d{3}/))return null;
+  // Sla lege pagina's over
+  const bodyTxt=body.join(' ').replace(/\s+/g,' ').trim();
+  if(bodyTxt.length<80)return null;
+  // Sla sport/weer/verkeer over
+  if(/^(sport|weer|verkeer|eredivisie|formule\s*1|wielren|voetbal|schaats|zwem)/i.test(titel))return null;
+  const cat=n>=125?'Buitenland':'Binnenland';
+  const radio=maakRadio(titel,body);
+  return{n,cat,titel,radio};
+}
+
+function maakRadio(titel,body){
+  let t=body.map(l=>l.trim()).filter(l=>l.length>0)
+    .filter(l=>!/^(nieuws|binnenland|buitenland|sport|weer|verkeer)(\s+(nieuws|binnenland|buitenland|sport|weer|verkeer))*\s*$/i.test(l))
+    .join(' ').replace(/\s+/g,' ').trim();
+  t=t.replace(/([a-z]),([A-Z])/g,'$1. $2')
+     .replace(/([a-z])\.([A-Z])/g,'$1. $2')
+     .replace(/(\d)\.(\d{3})/g,'$1 $2')
+     .replace(/(\d),(\d)/g,'$1 komma $2')
+     .replace(/%/g,' procent').replace(/€/g,' euro')
+     .replace(/\bca\./g,'circa').replace(/\bo\.a\./g,'onder andere')
+     .replace(/\bi\.p\.v\./g,'in plaats van');
+  return t;
+}
+
+// ── fallback nieuws (voor als fetch niet werkt) ──
+const FALLBACK=[
+  {n:104,cat:'Binnenland',titel:'Burgers geronseld voor spionage door Rusland en Iran',radio:'Buitenlandse inlichtingendiensten, zoals die van Rusland en Iran, rekruteren steeds vaker gewone Europese burgers voor spionage en sabotage. Dat zegt een woordvoerder van de landelijke politie-eenheid Opsporing en Interventies. Deze zogeheten wegwerpspionnen worden online geronseld en doen het voor het geld of de spanning, niet vanuit een ideologie. Mensen worden bijvoorbeeld gevraagd of ze iets voor vijfduizend euro in brand willen steken, zonder dat duidelijk is dat er een land als Rusland of Iran achter zit.'},
+  {n:105,cat:'Binnenland',titel:'Gemeenteraadsverkiezingen: stembureaus in heel Nederland open',radio:'In het hele land zijn vandaag de stembureaus open voor de gemeenteraadsverkiezingen. Veertien komma drie miljoen inwoners in driehonderd veertig gemeenten kunnen tot eenentwintig uur stemmen. Alleen Wijdemeren en Hilversum doen niet mee, omdat deze gemeenten gaan fuseren. In Bavel was een stembureau vanochtend gesloten door wateroverlast; een lekkage had de vloer blank gezet. In Sassenheim en het Friese Oosterzee waren stembureaus even zonder stroom, maar ze konden gewoon open.'},
+  {n:106,cat:'Binnenland',titel:'Koningsdag dit jaar in Dokkum met Friese folklore',radio:'Koningsdag wordt dit jaar gevierd in het Friese Dokkum, met een programma vol Friese folklore. De koninklijke familie wordt bij aankomst begeleid door acht Friese paarden. In de grachten van de stad liggen meer dan tachtig Friese schepen. Als knipoog naar de Elfstedentocht krijgt de familie een stempelkaart voor de te bezoeken locaties. Willem-Alexander viert dit jaar voor het eerst als koning Koningsdag in Friesland. Hij wordt op zevenentwintig april negenenvijftig jaar.'},
+  {n:107,cat:'Binnenland',titel:'PVV-afsplitsing start eigen partij voor Statenverkiezingen',radio:'De zeven opgestapte PVV-Kamerleden doen volgend jaar mee aan de Provinciale Statenverkiezingen met een eigen partij. Dat bevestigt fractievoorzitter Gidi Markuszower. De zeven splitsten zich in januari af van de PVV uit onvrede over Geert Wilders. Ze hadden kritiek op het gebrek aan inspraak en het ontbreken van leden. Ze willen de partij vóór volgend jaar van de grond krijgen, met een naam en kandidaten voor de provincies.'},
+  {n:108,cat:'Binnenland',titel:'Hoger beroep in zaak borstimplantaten Allergan',radio:'Bureau Clara Wichmann gaat in beroep tegen het vonnis dat borstimplantaten van Allergan niet gebrekkig waren. De organisatie voor vrouwenrechten stelt dat de implantaten wel tot klachten leiden, waaronder haaruitval, vermoeidheid en reumatische klachten. Ze zouden ook het risico op lymfeklierkanker vergroten. De implantaten worden sinds tweeduizend achttien niet meer gebruikt. Verwijdering kost duizenden euro\'s, en zonder klachten krijgen vrouwen geen vergoeding.'},
+  {n:109,cat:'Binnenland',titel:'Ongeopende medicijnen mogen worden herverdeeld',radio:'Ongebruikte geneesmiddelen kunnen straks opnieuw worden uitgegeven aan andere patiënten. Europese regels zijn zo aangepast dat apothekers ongeopende verpakkingen onder strikte voorwaarden mogen herverstrekken. Onderzoek toont aan dat dit veilig kan. Het spaart miljoenen euro\'s en voorkomt dat medicijnen worden vernietigd. In Nederland komen vooralsnog alleen dure goed houdbare geneesmiddelen, zoals kankermedicijnen, in aanmerking.'},
+  {n:125,cat:'Buitenland',titel:'Israël claimt twee hoge Iraanse kopstukken te hebben gedood',radio:'De Israëlische minister van Defensie Katz meldt dat Ali Larijani, de Iraanse veiligheidschef, is gedood bij een Israëlische aanval. Israël claimt ook de leider van de Basij-militie, Gholamreza Soleimani, te hebben uitgeschakeld. Die militie speelde een sleutelrol bij het neerslaan van protesten in januari, waarbij duizenden betogers omkwamen. Het Israëlische leger maakt melding van grootschalige aanvallen op Iraanse lanceerinstallaties en luchtverdedigingssystemen.'},
+  {n:126,cat:'Buitenland',titel:'VN waarschuwt: honger verergert door oorlog in Iran',radio:'Als de oorlog in Iran nog maanden aanhoudt, kunnen tientallen miljoenen mensen extra te maken krijgen met acute honger. Dat waarschuwt het Wereldvoedselprogramma van de Verenigde Naties. Hulproutes raken geblokkeerd en kosten voor eten, olie en transport stijgen. Als de situatie aanhoudt, stijgt het aantal mensen in hongersnood boven de driehonderd negentien miljoen — een wereldwijd historisch record.'},
+  {n:127,cat:'Buitenland',titel:'VN onderzoekt dodelijke aanval op meisjesschool in Minab',radio:'Een VN-onderzoeksteam is begonnen met onderzoek naar de aanval op een basisschool in het Iraanse Minab, waarbij honderd acht en zestig mensen zouden zijn omgekomen, onder wie veel kinderen. De school stond naast een militair complex van de Islamitische Revolutionaire Garde dat op de eerste dag van de aanvallen werd geraakt. Op door de NOS geverifieerde beelden zijn zes inslagen te zien. Ook de Amerikanen voeren een eigen onderzoek. President Trump zei te kunnen leven met de uitkomst.'},
+  {n:128,cat:'Buitenland',titel:'Trump en Zelensky positief na ontmoeting in Florida',radio:'De presidenten Trump en Zelensky zijn optimistisch over een akkoord voor een einde aan de oorlog in Oekraïne, na een ontmoeting in Florida. Of er echt vorderingen zijn gemaakt, blijft onduidelijk. Zelensky zegt dat er honderd procent overeenstemming is, Trump houdt het op vijfennegentig procent. Concreet is er niets bekendgemaakt. Voor het gesprek met Zelensky sprak Trump met de Russische president Poetin. Trump zegt dat Poetin serieus is over vrede, zonder details te noemen.'}
+];
+
+// ── init ──
+async function init(){
+  document.getElementById('hdrDate').innerHTML=`NIEUWS RADIOBULLETIN<br>${dutchShort()}`;
+  document.getElementById('listDate').textContent=dutchLong();
+  if(window.speechSynthesis){
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged=vulStemmen;
+  }
+
+  // Probeer live ophalen
+  let gevonden=[];
+  const todo=ALLPAGES;
+  for(let i=0;i<todo.length;i++){
+    const n=todo[i];
+    document.getElementById('loadStat').textContent=`Pagina ${n} ophalen... (${i+1}/${todo.length})`;
+    document.getElementById('loadBar').style.width=((i+1)/todo.length*100)+'%';
+    const res=await fetchPagina(n);
+    const log=document.getElementById('loadLog');
+    log.textContent+=`p.${n}${res?'✓':'—'} `;
+    if(res)gevonden.push(res);
+    await new Promise(r=>setTimeout(r,120));
+  }
+
+  if(gevonden.length>0){
+    items=gevonden;
+    document.getElementById('loadStat').textContent=`✓ ${items.length} berichten geladen`;
+    document.getElementById('footInfo').textContent=`${items.length} berichten · live van NOS Teletekst`;
+  } else {
+    // Fallback: gebruik hardcoded nieuws van vandaag
+    items=FALLBACK;
+    document.getElementById('loadStat').textContent=`Offline modus — ${items.length} berichten geladen`;
+    document.getElementById('footInfo').textContent=`${items.length} berichten · lokale versie`;
+  }
+
+  await new Promise(r=>setTimeout(r,500));
+  document.getElementById('loadScreen').style.display='none';
+  const ps=document.getElementById('playerScreen');
+  ps.style.display='flex';ps.style.flexDirection='column';
+  document.getElementById('totN').textContent=items.length;
+  bouwLijst();
+  vulStemmen();
+}
+
+// ── stemmen ──
+function vulStemmen(){
+  const sel=document.getElementById('voiceSel');
+  const vs=window.speechSynthesis.getVoices();
+  if(!vs.length)return;
+  const nl=vs.filter(v=>v.lang.startsWith('nl'));
+  const rest=vs.filter(v=>!v.lang.startsWith('nl'));
+  sel.innerHTML='';
+  if(nl.length){
+    const g=document.createElement('optgroup');g.label='Nederlands';
+    nl.forEach(v=>{const o=document.createElement('option');o.value=v.name;o.textContent=`${v.name} (${v.lang})`;g.appendChild(o);});
+    sel.appendChild(g);
+  }
+  if(rest.length){
+    const g=document.createElement('optgroup');g.label='Overige stemmen';
+    rest.forEach(v=>{const o=document.createElement('option');o.value=v.name;o.textContent=`${v.name} (${v.lang})`;g.appendChild(o);});
+    sel.appendChild(g);
+  }
+  if(nl.length){sel.value=nl[0].name;voice=nl[0];}
+}
+function onVoiceChange(){
+  voice=window.speechSynthesis.getVoices().find(v=>v.name===document.getElementById('voiceSel').value)||null;
+}
+
+// ── lijst ──
+function bouwLijst(){
+  const l=document.getElementById('nlist');l.innerHTML='';
+  items.forEach((item,i)=>{
+    const d=document.createElement('div');
+    d.className='ni';d.id='ni'+i;
+    d.innerHTML=`<div class="ni-num">${String(i+1).padStart(2,'0')}</div><div class="ni-pg">p.${item.n}</div><div class="ni-body"><div class="ni-title">${item.titel}</div></div>`;
+    d.onclick=()=>springNaar(i);
+    l.appendChild(d);
+  });
+}
+
+// ── spraak ──
+function spreek(tekst,daarna){
+  if(!window.speechSynthesis){alert('Gebruik Chrome.');return;}
+  window.speechSynthesis.cancel();
+  utt=new SpeechSynthesisUtterance(tekst);
+  utt.lang='nl-NL';utt.rate=speed;utt.pitch=1.0;utt.volume=1.0;
+  if(voice)utt.voice=voice;
+  utt.onend=()=>{if(!paused&&!stopped)daarna();};
+  utt.onerror=e=>{if(e.error!=='interrupted')setS('Fout: '+e.error,false);};
+  window.speechSynthesis.speak(utt);
+}
+
+// ── flow ──
+function startBulletin(){
+  if(paused){hervatBulletin();return;}
+  stopBulletin();stopped=false;paused=false;cur=-1;
+  setS('Bezig met voorlezen...',true);setP(true);
+  spreek(`Goede${dagdeel()}, dit is het NOS Teletekst radiobulletin van ${dutchSpoken()}. Er zijn ${items.length} berichten.`,()=>speelItem(0));
+}
+function speelItem(i){
+  if(stopped||i>=items.length){if(!stopped)speelOutro();return;}
+  cur=i;updateUI();
+  spreek(items[i].radio,()=>speelItem(i+1));
+}
+function speelOutro(){
+  clearHL();setS('Afsluiting...',true);
+  document.getElementById('lblNow').textContent='Afsluiting bulletin';
+  document.getElementById('lblNow').classList.remove('on');
+  spreek(`Dit was het NOS Teletekst radiobulletin van ${dutchSpoken()}. Fijne ${dagdeel()} verder.`,()=>{
+    stopped=true;setS('Klaar',false);setP(false);
+    document.getElementById('prgB').style.width='100%';
+    document.getElementById('lblNow').textContent='Bulletin afgespeeld';
+  });
+}
+function pauseBulletin(){
+  if(stopped)return;
+  if(!paused){
+    paused=true;window.speechSynthesis.pause();
+    document.getElementById('dot').className='dot paus';
+    document.getElementById('statTxt').textContent='Gepauzeerd';
+    document.getElementById('btnPau').textContent='▶ Hervat';
+  }else{hervatBulletin();}
+}
+function hervatBulletin(){
+  paused=false;window.speechSynthesis.resume();
+  document.getElementById('dot').className='dot live';
+  document.getElementById('statTxt').textContent='Bezig met voorlezen...';
+  document.getElementById('btnPau').textContent='❚❚ Pauze';
+}
+function stopBulletin(){
+  stopped=true;paused=false;window.speechSynthesis.cancel();cur=-1;
+  setS('Gestopt',false);setP(false);
+  document.getElementById('prgB').style.width='0%';
+  document.getElementById('lblNow').textContent='Druk op Spelen om het bulletin te starten';
+  document.getElementById('lblNow').classList.remove('on');
+  document.getElementById('curN').textContent='—';
+  document.getElementById('btnPau').textContent='❚❚ Pauze';
+  clearHL();document.querySelectorAll('.ni').forEach(e=>e.classList.remove('done'));
+}
+function springNaar(i){
+  stopped=false;paused=false;window.speechSynthesis.cancel();
+  setS('Bezig...',true);setP(true);
+  for(let j=0;j<i;j++){const e=document.getElementById('ni'+j);if(e){e.classList.add('done');e.classList.remove('cur');}}
+  speelItem(i);
+}
+
+// ── UI ──
+function updateUI(){
+  const i=cur;if(i<0||i>=items.length)return;
+  document.getElementById('lblNow').textContent=items[i].titel;
+  document.getElementById('lblNow').classList.add('on');
+  document.getElementById('curN').textContent=i+1;
+  document.getElementById('prgB').style.width=((i+1)/items.length*100)+'%';
+  clearHL();
+  for(let j=0;j<i;j++){const e=document.getElementById('ni'+j);if(e){e.classList.add('done');e.classList.remove('cur');}}
+  const el=document.getElementById('ni'+i);
+  if(el){el.classList.add('cur');el.classList.remove('done');el.scrollIntoView({behavior:'smooth',block:'nearest'});}
+}
+function clearHL(){document.querySelectorAll('.ni.cur').forEach(e=>e.classList.remove('cur'));}
+function setS(m,l){document.getElementById('dot').className='dot'+(l?' live':'');document.getElementById('statTxt').textContent=m;}
+function setP(a){document.getElementById('btnPlay').classList.toggle('on',a);}
+
+init();
+</script>
+</body>
+</html>
